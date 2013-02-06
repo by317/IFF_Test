@@ -12,13 +12,14 @@
 #define VIN_SCALE		430		//Scaling for Q15 Format
 #define VIN_OFFSET 		0
 #define VBUS_SCALE_INIT	667		//Scaling for Q15 Format
-#define	I_SCALE_INIT	100		//Scaling for Q15 Format
+#define	I_SCALE			167		//Scaling for Q15 Format
+#define IIN_OFFSET		140
 #define I_OFFSET_INIT		47
 #define MPPT_UPDATE_PERIOD_MS 500
-#define Q2_PULSE_PERCENT	100
+#define Q2_PULSE_PERCENT	200
 #define Q1_MAX_PULSE	300
-#define DEADTIME	8
-#define MAX_PERIOD	3000
+#define DEADTIME	3
+#define MAX_PERIOD	2000
 #define MAX_CMD		(MAX_PERIOD + Q1_MAX_PULSE)
 #define MAX_COMP	MAX_CMD*32768
 #define MAX_REF_Q15	3276800;
@@ -51,6 +52,7 @@ int32 Numerator_Delay_Q15;
 int32 Denominator_Delay_Q15;
 int32 Compensator_Output_Q15;
 int input_voltage_prescale;
+int input_current_prescale;
 int Comp_Out_Int;
 
 unsigned int q1_pulse;
@@ -58,6 +60,8 @@ unsigned int q2_pulse;
 unsigned int period_cmd;
 int R_Factor;
 unsigned int period;
+unsigned int OOV;
+unsigned int PGOOD;
 
 void main(void) {
 	DINT;
@@ -87,7 +91,11 @@ interrupt void pwm_int()
 {
 	GpioDataRegs.GPASET.bit.GPIO2 = 1;
 	input_voltage_prescale = ((int) AdcResult.ADCRESULT0 - VIN_OFFSET);
+	input_current_prescale = ((int) AdcResult.ADCRESULT1 + IIN_OFFSET);
 	Input_Voltage_Q15 = ((long int) input_voltage_prescale*VIN_SCALE);
+	Input_Current_Q15 = ((long int) input_current_prescale*I_SCALE);
+	OOV = GpioDataRegs.GPADAT.bit.GPIO0;
+	PGOOD = GpioDataRegs.GPADAT.bit.GPIO12;
 
 	Voltage_Error_Q15 = Input_Reference_Q15 - Input_Voltage_Q15;
 
@@ -98,7 +106,7 @@ interrupt void pwm_int()
 
 	Comp_Out_Int = ((int) _IQ15int(Compensator_Output_Q15));
 
-	period_cmd = MAX_CMD + Comp_Out_Int;
+	//period_cmd = MAX_CMD + Comp_Out_Int;
 
 	Numerator_Delay_Q15 = Voltage_Error_Q15;
 	Denominator_Delay_Q15 = Compensator_Output_Q15;
