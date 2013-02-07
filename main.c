@@ -43,6 +43,10 @@
 #define b0	18290
 #define b1	11370
 
+#pragma CODE_SECTION(pwm_int, "ramfuncs");
+#pragma CODE_SECTION(mppt_int, "ramfuncs");
+#pragma CODE_SECTION(ms_delay, "ramfuncs");
+
 #define EPWM3_CMPA	Q1_PULSE
 #define EPWM4_CMPA	Q1_PULSE + DEADTIME
 #define EPWM4_CMPB	Q1_PULSE + DEADTIME + Q2_PULSE
@@ -109,6 +113,7 @@ void main(void) {
 	SetupAdc();
 	IER = 0x0000;
 	IFR = 0x0000;
+	MemCopy(&RamfuncsLoadStart, &RamfuncsLoadEnd, &RamfuncsRunStart);
 	initVariables();
 	InitPieVectTable();
 	easyDSP_SCI_Init();
@@ -164,11 +169,11 @@ interrupt void mppt_int()
 		Vin_reference_Q15 = MIN_OPERATING_VOLTAGE + MPPT_Step_Size_Q15;
 		step_direction = 1;
 	}
-//	else if (startup_flag && (Input_Voltage_Q15 >= Max_Operating_Voltage_Q15))
-//	{
-//		Vin_reference_Q15 = Max_Operating_Voltage_Q15 - MPPT_Step_Size_Q15;
-//		step_direction = 0;
-//	}
+	else if (startup_flag && (Input_Voltage_Q15 >= Max_Operating_Voltage_Q15))
+	{
+		Vin_reference_Q15 = Max_Operating_Voltage_Q15 - MPPT_Step_Size_Q15;
+		step_direction = 0;
+	}
 	else
 	{
 		if (startup_flag)
@@ -243,12 +248,12 @@ interrupt void pwm_int()
 				startup_flag = 0;
 			}
 		}
-//		if (Input_Current_Q15 > Current_Limit_Q15)
-//		{
-//			y = 2;
-//			Vin_reference_Q15 = High_Voltage_Reference_Q15;
-//			startup_flag = 0;
-//		}
+		if (Input_Current_Q15 > Current_Limit_Q15)
+		{
+			y = 2;
+			Vin_reference_Q15 = High_Voltage_Reference_Q15;
+			startup_flag = 0;
+		}
 
 	Voltage_Error_Q15 = Vin_reference_Q15 - Input_Voltage_Q15;
 
