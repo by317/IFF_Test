@@ -28,11 +28,10 @@
 
 #define MIN_OPERATING_VOLTAGE 491520 //Minimum Operating Voltage of 15V
 #define MIN_STARTUP_VOLTAGE 655360 //Minimum Startup Voltage of 20V
-//#define MAX_OPERATING_VOLTAGE 1474560 //Maximum Operating Voltage of 45V
 #define INITIAL_CURRENT_LIMIT	15
 
 #define MPPT_UPDATE_PERIOD_MS	500
-#define MAX_POWER_SAMPLES		20
+#define MAX_POWER_SAMPLES		30
 #define INITIAL_POWER_SAMPLES	10
 #define INITIAL_MPPT_STEP_SIZE	_IQ15(0.4)
 #define INITIAL_HICCUP_CURRENT_LIMIT	5
@@ -49,11 +48,13 @@
 #define EPWM4_CMPB	Q1_PULSE + DEADTIME + Q2_PULSE
 
 interrupt void pwm_int(void);
+interrupt void mppt_int(void);
 void pwm_setup(void);
 void initVariables(void);
 void InitAdc(void);
 void SetupAdc(void);
 void ms_delay(unsigned int);
+void initialize_mppt_timer(void);
 
 //ADC & Sensing Variables
 int input_voltage_prescale;
@@ -70,9 +71,7 @@ long int Num_Power_Samples_Q15;
 //MPPT Variables
 unsigned int step_direction;
 unsigned int startup_flag;
-long int Min_Startup_Voltage_Q15;
 long int Max_Voltage_Q15;
-long int Min_Operating_Voltage_Q15;
 long int Max_Operating_Voltage_Q15;
 long int Previous_Power_Q15;
 long int MPPT_Step_Size_Q15;
@@ -127,6 +126,16 @@ void main(void) {
 	EINT;
 	InitEPwm3Gpio();
 	InitEPwm4Gpio();
+
+	y = 5;
+	for(;;)
+	{
+		if(delay_flag)
+		{
+			ms_delay(1000);
+			delay_flag = 0;
+		}
+	}
 }
 
 interrupt void mppt_int()
@@ -144,22 +153,22 @@ interrupt void mppt_int()
 		Vin_reference_Q15 = High_Voltage_Reference_Q15; //100V
 		startup_flag = 0;
 	}
-	else if (!startup_flag && Input_Voltage_Q15 > Min_Startup_Voltage_Q15)
+	else if (!startup_flag && Input_Voltage_Q15 > MIN_STARTUP_VOLTAGE)
 	{
 		Vin_reference_Q15 = _IQmpy(Input_Voltage_Q15, _IQ15(0.9));
 		step_direction = 0;
 		startup_flag = 1;
 	}
-	else if (startup_flag && (Input_Voltage_Q15 <= Min_Operating_Voltage_Q15))
+	else if (startup_flag && (Input_Voltage_Q15 <= MIN_OPERATING_VOLTAGE))
 	{
-		Vin_reference_Q15 = Min_Operating_Voltage_Q15 + MPPT_Step_Size_Q15;
+		Vin_reference_Q15 = MIN_OPERATING_VOLTAGE + MPPT_Step_Size_Q15;
 		step_direction = 1;
 	}
-	else if (startup_flag && (Input_Voltage_Q15 >= Max_Operating_Voltage_Q15))
-	{
-		Vin_reference_Q15 = Max_Operating_Voltage_Q15 - MPPT_Step_Size_Q15;
-		step_direction = 0;
-	}
+//	else if (startup_flag && (Input_Voltage_Q15 >= Max_Operating_Voltage_Q15))
+//	{
+//		Vin_reference_Q15 = Max_Operating_Voltage_Q15 - MPPT_Step_Size_Q15;
+//		step_direction = 0;
+//	}
 	else
 	{
 		if (startup_flag)
@@ -234,12 +243,12 @@ interrupt void pwm_int()
 				startup_flag = 0;
 			}
 		}
-		if (Input_Current_Q15 > Current_Limit_Q15)
-		{
-			y = 2;
-			Vin_reference_Q15 = High_Voltage_Reference_Q15;
-			startup_flag = 0;
-		}
+//		if (Input_Current_Q15 > Current_Limit_Q15)
+//		{
+//			y = 2;
+//			Vin_reference_Q15 = High_Voltage_Reference_Q15;
+//			startup_flag = 0;
+//		}
 
 	Voltage_Error_Q15 = Vin_reference_Q15 - Input_Voltage_Q15;
 
@@ -250,7 +259,7 @@ interrupt void pwm_int()
 
 	Comp_Out_Int = ((int) _IQ15int(Compensator_Output_Q15));
 
-	//period_cmd = MAX_CMD + Comp_Out_Int;
+	period_cmd = MAX_CMD + Comp_Out_Int;
 
 	Numerator_Delay_Q15 = Voltage_Error_Q15;
 	Denominator_Delay_Q15 = Compensator_Output_Q15;
@@ -324,8 +333,6 @@ void initVariables (void)
 	Compensator_Output_Q15 = 0;
 	input_voltage_prescale = 0;
 	Comp_Out_Int = 0;
-	Min_Startup_Voltage_Q15 = MIN_STARTUP_VOLTAGE;
-	Min_Operating_Voltage_Q15 = MIN_OPERATING_VOLTAGE;
 	Max_Operating_Voltage_Q15 = _IQ15(INITIAL_MAX_OPERATING_VOLTAGE);
 	Max_Voltage_Q15 = _IQ15(INITIAL_MAX_VOLTAGE);
 	PGOOD = 0;
@@ -343,6 +350,7 @@ void initVariables (void)
 	High_Voltage_Reference_Q15 = _IQ15(HV_REFERENCE);
 	delay_flag = 0;
 	Current_Limit_Q15 = _IQ15(INITIAL_CURRENT_LIMIT);
+	startup_flag = 0;
 }
 
 void SetupAdc(void)
