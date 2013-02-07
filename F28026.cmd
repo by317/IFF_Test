@@ -134,11 +134,16 @@ SECTIONS
 
    /* Initalized sections go in Flash */
    /* For SDFlash to program these, they must be allocated to page 0 */
-   .econst             : > FLASHA      PAGE = 0
+   .econst        : LOAD = FLASHA,  PAGE = 0
+                    RUN = RAMM1,     PAGE = 1
+                    LOAD_START(_econst_loadstart),
+                    LOAD_SIZE(_econst_loadsize),
+                    RUN_START(_econst_runstart)
+
    .switch             : > FLASHA      PAGE = 0
 
    /* Allocate IQ math areas: */
-   IQmath              : > PRAML0      PAGE = 0            /* Math Code */
+   IQmath              : > FLASHA      PAGE = 0            /* Math Code */
    IQmathTables        : > IQTABLES,   PAGE = 0, TYPE = NOLOAD
 
   /* Uncomment the section below if calling the IQNexp() or IQexp()

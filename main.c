@@ -46,9 +46,9 @@
 #pragma CODE_SECTION(pwm_int, "ramfuncs");
 #pragma CODE_SECTION(mppt_int, "ramfuncs");
 #pragma CODE_SECTION(ms_delay, "ramfuncs");
-#pragma CODE_SECTION(easy_RXINT_ISR, "ramfuncs");
-#pragma CODE_SECTION(easy_TXINT_ISR, "ramfuncs");
-#pragma CODE_SECTION(main, "ramfuncs");
+#pragma CODE_SECTION(__IQmpy, "ramfuncs");
+#pragma CODE_SECTION(__IQsat, "ramfuncs");
+#pragma CODE_SECTION(_IQ15div, "ramfuncs");
 
 #define EPWM3_CMPA	Q1_PULSE
 #define EPWM4_CMPA	Q1_PULSE + DEADTIME
@@ -87,10 +87,10 @@ long int Hiccup_Current_Limit_Q15;
 long int Current_Limit_Q15;
 int step_dir;
 int input_current_prescale;
+const int32 High_Voltage_Reference_Q15 = _IQ(100);
 
 //Control Loop Variables
 int32 Vin_reference_Q15;
-int32 High_Voltage_Reference_Q15;
 int32 Voltage_Error_Q15;
 int32 Numerator_Delay_Q15;
 int32 Denominator_Delay_Q15;
@@ -108,15 +108,24 @@ unsigned int delay_flag;
 unsigned int y;
 unsigned int i;
 
+extern Uint16 RamfuncsLoadStart;
+extern Uint16 RamfuncsLoadEnd;
+extern Uint16 RamfuncsRunStart;
+
+extern unsigned int econst_loadstart;
+extern unsigned int econst_loadsize;
+extern unsigned int econst_runstart;
+
 void main(void) {
 	DINT;
 	InitSysCtrl();
 	InitPieCtrl();
+	MemCopy(&RamfuncsLoadStart, &RamfuncsLoadEnd, &RamfuncsRunStart);
+	memcpy(&econst_runstart, &econst_loadstart, (Uint32)&econst_loadsize);
 	InitAdc();
 	SetupAdc();
 	IER = 0x0000;
 	IFR = 0x0000;
-	MemCopy(&RamfuncsLoadStart, &RamfuncsLoadEnd, &RamfuncsRunStart);
 	initVariables();
 	InitPieVectTable();
 	easyDSP_SCI_Init();
@@ -355,7 +364,7 @@ void initVariables (void)
 	MPPT_Step_Size_Q15 = INITIAL_MPPT_STEP_SIZE;
 	Num_Power_Samples_Q15 = _IQ15(Num_Power_Samples);
 	Hiccup_Current_Limit_Q15 = _IQ15(INITIAL_HICCUP_CURRENT_LIMIT);
-	High_Voltage_Reference_Q15 = _IQ15(HV_REFERENCE);
+	//High_Voltage_Reference_Q15 = _IQ15(HV_REFERENCE);
 	delay_flag = 0;
 	Current_Limit_Q15 = _IQ15(INITIAL_CURRENT_LIMIT);
 	startup_flag = 0;
