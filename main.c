@@ -46,6 +46,9 @@
 #pragma CODE_SECTION(pwm_int, "ramfuncs");
 #pragma CODE_SECTION(mppt_int, "ramfuncs");
 #pragma CODE_SECTION(ms_delay, "ramfuncs");
+#pragma CODE_SECTION(easy_RXINT_ISR, "ramfuncs");
+#pragma CODE_SECTION(easy_TXINT_ISR, "ramfuncs");
+#pragma CODE_SECTION(main, "ramfuncs");
 
 #define EPWM3_CMPA	Q1_PULSE
 #define EPWM4_CMPA	Q1_PULSE + DEADTIME
